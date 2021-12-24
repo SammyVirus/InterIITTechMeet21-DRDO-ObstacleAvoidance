@@ -1,35 +1,173 @@
-# InterIITTechMeet21-DRDO-ObstacleAvoidance
+﻿# Installation 
+## ROS
+You can find these installation instructions [here](wiki.ros.org/melodic/Installation/Ubuntu).
+#### Setup your sources.list
+    sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+#### Set up your keys
+    sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+#### Update packages and install ROS
+	sudo apt update
+	sudo apt install ros-melodic-desktop-full
+#### Setup the environment
+	echo "source /opt/ros/melodic/setup.bash" >> ~/.bashrc
+	source ~/.bashrc	
+#### Dependencies
+	sudo apt install python-rosdep python-rosinstall python-rosinstall-generator python-wstool build-essential
+#### Rosdep
+	sudo apt install python-rosdep
+	sudo rosdep init
+	rosdep update
+#### Set Up Catkin workspace
 
-## Extra Installations
-1. Numpy (latest version available)    
-2. cv_bridge (latest version available)
-3. opencv-python (latest version available)
+We use `catkin build` instead of `catkin_make`. Please install the following:
+```
+sudo apt-get install python-wstool python-rosinstall-generator python-catkin-tools
+```
 
-## Parameters Tuned
-1. fov (depth_camera) - 1.3
-2. setpoint_velocity - from LOCAL_NED to BODY_NED in apm_config.yaml
-3. point_cloud_max = 10
-4. point_cloud_min = default_value(unchanged)
+Then, initialize the catkin workspace:
+```
+mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws
+catkin init
+```
 
-## Running the code
-<source rosnode.sh>
+#### Dependencies installation
 
-## Algorithm
-We are using depth camera input only to command the drone. Whole algorithm works on image processing obtained by analysing the depth camera compressed image and its pixel values. Various conditions are detected by detecting the change in pixels values under different conditions.
+Install `mavros` and `mavlink` from source:
+```
+cd ~/catkin_ws
+wstool init ~/catkin_ws/src
 
-1. Using CVBridge to convert the ROS images to OpenCV images.
-2. Capture image by the RGB-D, converting all NAN to depth 10m by masking it and cropping the image from top as per needs.
-3. Applying binary threshold on the image to identify the free space from the nearby obstacles.
-4. Finding the biggest contour and finding its center (cX, cY).
-5. The distance between the image centre and contour centre is calculated and the yaw is adjusted accordingly.
-6. First yaw is adjusted according to the precision offset set and the drone is aligned with the free space contour. Then it moves 1m forward and then repeats the loop.
-7. If there are obstacles very near to the drone a thresholding condition acts and slides the drone opposite to the obstacle density in the image.
-8. We check the number of pixels which are less than a given threshold in both left half and right half then slide accordingly.
-9. Then we also check the standard deviation of the image to check for dead ends and rotate the drone according to the image. It also adjusts the height.
-10. When the world end is reached the aruco marker detection node takes over and lands the drone.
+rosinstall_generator --upstream mavros | tee /tmp/mavros.rosinstall
+rosinstall_generator mavlink | tee -a /tmp/mavros.rosinstall
+wstool merge -t src /tmp/mavros.rosinstall
+wstool update -t src
+rosdep install --from-paths src --ignore-src --rosdistro `echo $ROS_DISTRO` -y
 
-## Algorithm for aruco marker detection
-1. When ArucoMarker enters the field of view of downfacing RGB camera, using opencv aruco detection function, we get the center of aruco marker wrt image coordinates.
-2. We know that drone location wrt image is at the center, from these two points we get the unit vector directed to aruco marker center from drone center. By publishing velocity in that unit vector direction, we are able to match the drone center to aruco marker.
-3. Then the string is published to the rostopic given accordingly in the problem statement.
-4. After getting near the aruco center, by using rosservice we are able to land our drone on the aruco marker center.
+catkin build
+```
+Add a line to end of `~/.bashrc` by running the following command:
+```
+echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
+```
+
+update global variables
+```
+source ~/.bashrc
+```
+
+install geographiclib dependancy 
+```
+sudo ~/catkin_ws/src/mavros/mavros/scripts/install_geographiclib_datasets.sh
+```
+## Ardupilot
+### Installing Ardupilot and MAVProxy
+#### Clone ArduPilot
+
+In home directory:
+```
+cd ~
+sudo apt install git
+git clone https://github.com/ArduPilot/ardupilot.git
+cd ardupilot
+git checkout Copter-3.6
+git submodule update --init --recursive
+```
+
+#### Install dependencies:
+```
+sudo apt install python-matplotlib python-serial python-wxgtk3.0 python-wxtools python-lxml python-scipy python-opencv ccache gawk python-pip python-pexpect
+```
+
+#### Use pip (Python package installer) to install mavproxy:
+```
+sudo pip install future pymavlink MAVProxy
+```
+
+Open `~/.bashrc` for editing:
+```
+gedit ~/.bashrc
+```
+
+Add these lines to end of `~/.bashrc` (the file open in the text editor):
+```
+export PATH=$PATH:$HOME/ardupilot/Tools/autotest
+export PATH=/usr/lib/ccache:$PATH
+```
+
+Save and close the text editor.
+
+Reload `~/.bashrc`:
+```
+. ~/.bashrc
+```
+
+Run SITL (Software In The Loop) once to set params:
+```
+cd ~/ardupilot/ArduCopter
+sim_vehicle.py -w
+```
+## Gazebo and Plugins
+#### Gazebo
+
+Setup your computer to accept software from http://packages.osrfoundation.org:
+```
+sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
+```
+
+Setup keys:
+```
+wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
+```
+
+Reload software list:
+```
+sudo apt update
+```
+Install Gazebo:
+```
+sudo apt install gazebo9 libgazebo9-dev
+```
+### Install Gazebo plugin for APM (ArduPilot Master) :
+```
+cd ~
+git clone https://github.com/khancyr/ardupilot_gazebo.git
+cd ardupilot_gazebo
+git checkout dev
+```
+build and install plugin
+```
+mkdir build
+cd build
+cmake ..
+make -j4
+sudo make install
+```
+```
+echo 'source /usr/share/gazebo/setup.sh' >> ~/.bashrc
+```
+Set paths for models:
+```
+echo 'export GAZEBO_MODEL_PATH=~/ardupilot_gazebo/models' >> ~/.bashrc
+. ~/.bashrc
+```
+
+#### Run Simulator
+In one Terminal (Terminal 1), run Gazebo:
+```
+gazebo --verbose ~/ardupilot_gazebo/worlds/iris_arducopter_runway.world
+```
+
+In another Terminal (Terminal 2), run SITL:
+```
+cd ~/ardupilot/ArduCopter/
+sim_vehicle.py -v ArduCopter -f gazebo-iris --console
+```
+
+After Installing everything you need to download the package from the given drive link and paste it in the `~/catkin_ws/src` folder.
+
+Copy the models from the `~/catkin_ws/src/interiit21/models` folder and paste them in your `~/.gazebo/models` folder. 
+
+To start everything required for simulation run
+
+    source ~/catkin_ws/src/start_sim.sh
