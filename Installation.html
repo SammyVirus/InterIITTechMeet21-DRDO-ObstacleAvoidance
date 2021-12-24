@@ -1,0 +1,149 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Installation</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><h1 id="installation">Installation</h1>
+<h2 id="ros">ROS</h2>
+<p>You can find these installation instructions <a href="wiki.ros.org/melodic/Installation/Ubuntu">here</a>.</p>
+<h4 id="setup-your-sources.list">Setup your sources.list</h4>
+<pre><code>sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" &gt; /etc/apt/sources.list.d/ros-latest.list'
+</code></pre>
+<h4 id="set-up-your-keys">Set up your keys</h4>
+<pre><code>sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+</code></pre>
+<h4 id="update-packages-and-install-ros">Update packages and install ROS</h4>
+<pre><code>sudo apt update
+sudo apt install ros-melodic-desktop-full
+</code></pre>
+<h4 id="setup-the-environment">Setup the environment</h4>
+<pre><code>echo "source /opt/ros/melodic/setup.bash" &gt;&gt; ~/.bashrc
+source ~/.bashrc	
+</code></pre>
+<h4 id="dependencies">Dependencies</h4>
+<pre><code>sudo apt install python-rosdep python-rosinstall python-rosinstall-generator python-wstool build-essential
+</code></pre>
+<h4 id="rosdep">Rosdep</h4>
+<pre><code>sudo apt install python-rosdep
+sudo rosdep init
+rosdep update
+</code></pre>
+<h4 id="set-up-catkin-workspace">Set Up Catkin workspace</h4>
+<p>We use <code>catkin build</code> instead of <code>catkin_make</code>. Please install the following:</p>
+<pre><code>sudo apt-get install python-wstool python-rosinstall-generator python-catkin-tools
+</code></pre>
+<p>Then, initialize the catkin workspace:</p>
+<pre><code>mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws
+catkin init
+</code></pre>
+<h4 id="dependencies-installation">Dependencies installation</h4>
+<p>Install <code>mavros</code> and <code>mavlink</code> from source:</p>
+<pre><code>cd ~/catkin_ws
+wstool init ~/catkin_ws/src
+
+rosinstall_generator --upstream mavros | tee /tmp/mavros.rosinstall
+rosinstall_generator mavlink | tee -a /tmp/mavros.rosinstall
+wstool merge -t src /tmp/mavros.rosinstall
+wstool update -t src
+rosdep install --from-paths src --ignore-src --rosdistro `echo $ROS_DISTRO` -y
+
+catkin build
+</code></pre>
+<p>Add a line to end of <code>~/.bashrc</code> by running the following command:</p>
+<pre><code>echo "source ~/catkin_ws/devel/setup.bash" &gt;&gt; ~/.bashrc
+</code></pre>
+<p>update global variables</p>
+<pre><code>source ~/.bashrc
+</code></pre>
+<p>install geographiclib dependancy</p>
+<pre><code>sudo ~/catkin_ws/src/mavros/mavros/scripts/install_geographiclib_datasets.sh
+</code></pre>
+<h2 id="ardupilot">Ardupilot</h2>
+<h3 id="installing-ardupilot-and-mavproxy">Installing Ardupilot and MAVProxy</h3>
+<h4 id="clone-ardupilot">Clone ArduPilot</h4>
+<p>In home directory:</p>
+<pre><code>cd ~
+sudo apt install git
+git clone https://github.com/ArduPilot/ardupilot.git
+cd ardupilot
+git checkout Copter-3.6
+git submodule update --init --recursive
+</code></pre>
+<h4 id="install-dependencies">Install dependencies:</h4>
+<pre><code>sudo apt install python-matplotlib python-serial python-wxgtk3.0 python-wxtools python-lxml python-scipy python-opencv ccache gawk python-pip python-pexpect
+</code></pre>
+<h4 id="use-pip-python-package-installer-to-install-mavproxy">Use pip (Python package installer) to install mavproxy:</h4>
+<pre><code>sudo pip install future pymavlink MAVProxy
+</code></pre>
+<p>Open <code>~/.bashrc</code> for editing:</p>
+<pre><code>gedit ~/.bashrc
+</code></pre>
+<p>Add these lines to end of <code>~/.bashrc</code> (the file open in the text editor):</p>
+<pre><code>export PATH=$PATH:$HOME/ardupilot/Tools/autotest
+export PATH=/usr/lib/ccache:$PATH
+</code></pre>
+<p>Save and close the text editor.</p>
+<p>Reload <code>~/.bashrc</code>:</p>
+<pre><code>. ~/.bashrc
+</code></pre>
+<p>Run SITL (Software In The Loop) once to set params:</p>
+<pre><code>cd ~/ardupilot/ArduCopter
+sim_vehicle.py -w
+</code></pre>
+<h2 id="gazebo-and-plugins">Gazebo and Plugins</h2>
+<h4 id="gazebo">Gazebo</h4>
+<p>Setup your computer to accept software from <a href="http://packages.osrfoundation.org">http://packages.osrfoundation.org</a>:</p>
+<pre><code>sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" &gt; /etc/apt/sources.list.d/gazebo-stable.list'
+</code></pre>
+<p>Setup keys:</p>
+<pre><code>wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
+</code></pre>
+<p>Reload software list:</p>
+<pre><code>sudo apt update
+</code></pre>
+<p>Install Gazebo:</p>
+<pre><code>sudo apt install gazebo9 libgazebo9-dev
+</code></pre>
+<h3 id="install-gazebo-plugin-for-apm-ardupilot-master-">Install Gazebo plugin for APM (ArduPilot Master) :</h3>
+<pre><code>cd ~
+git clone https://github.com/khancyr/ardupilot_gazebo.git
+cd ardupilot_gazebo
+git checkout dev
+</code></pre>
+<p>build and install plugin</p>
+<pre><code>mkdir build
+cd build
+cmake ..
+make -j4
+sudo make install
+</code></pre>
+<pre><code>echo 'source /usr/share/gazebo/setup.sh' &gt;&gt; ~/.bashrc
+</code></pre>
+<p>Set paths for models:</p>
+<pre><code>echo 'export GAZEBO_MODEL_PATH=~/ardupilot_gazebo/models' &gt;&gt; ~/.bashrc
+. ~/.bashrc
+</code></pre>
+<h4 id="run-simulator">Run Simulator</h4>
+<p>In one Terminal (Terminal 1), run Gazebo:</p>
+<pre><code>gazebo --verbose ~/ardupilot_gazebo/worlds/iris_arducopter_runway.world
+</code></pre>
+<p>In another Terminal (Terminal 2), run SITL:</p>
+<pre><code>cd ~/ardupilot/ArduCopter/
+sim_vehicle.py -v ArduCopter -f gazebo-iris --console
+</code></pre>
+<p>After Installing everything you need to download the package from the given drive link and paste it in the <code>~/catkin_ws/src</code> folder.</p>
+<p>Copy the models from the <code>~/catkin_ws/src/interiit21/models</code> folder and paste them in your <code>~/.gazebo/models</code> folder.</p>
+<p>To start everything required for simulation run</p>
+<pre><code>source ~/catkin_ws/src/start_sim.sh
+</code></pre>
+</div>
+</body>
+
+</html>
